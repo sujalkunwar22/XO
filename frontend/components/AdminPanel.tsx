@@ -4,7 +4,7 @@ import {
   Users, CheckCircle2, AlertCircle, ShoppingBag, ArrowLeft, RefreshCw, Layers, DollarSign, Eye, EyeOff
 } from "lucide-react";
 import { ClubEvent, PhotoGroup } from "../types";
-import { VIPTable } from "../server/routes/admin.routes";
+import { VIPTable } from "../../backend/routes/admin.routes";
 
 export const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"events" | "photos" | "tables" | "orders">("events");

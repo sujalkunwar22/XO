@@ -3,7 +3,7 @@ import {
   Scan, Search, CheckCircle2, XCircle, Shield, RefreshCw, 
   MapPin, Check, Compass, Trash2, ArrowLeft, Users, AlertTriangle, Coffee, Info
 } from "lucide-react";
-import { VIPTable } from "../server/routes/admin.routes";
+import { VIPTable } from "../../backend/routes/admin.routes";
 import { Html5Qrcode } from "html5-qrcode";
 
 export const EmployeePanel: React.FC = () => {

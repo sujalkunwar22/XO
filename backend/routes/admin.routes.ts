@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { ClubEvent, VIPPackage, PhotoGroup } from "../../types";
-import { CLUB_EVENTS, VIP_PACKAGES, PHOTO_GROUPS } from "../../data";
+import { ClubEvent, VIPPackage, PhotoGroup } from "../../frontend/types";
+import { CLUB_EVENTS, VIP_PACKAGES, PHOTO_GROUPS } from "../../frontend/data";
 import { ordersDatabase } from "./payment.routes";
 
 export const adminRouter = Router();
