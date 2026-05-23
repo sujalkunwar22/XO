@@ -1,25 +1,10 @@
-import express from "express";
 import path from "path";
+import express from "express";
 import { createServer as createViteServer } from "vite";
-import { paymentRouter } from "./src/server/routes/payment.routes";
-import { adminRouter } from "./src/server/routes/admin.routes";
+import { app } from "./src/server/app";
 
 async function startServer() {
-  const app = express();
   const PORT = 3000;
-
-  // JSON Body parser
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-
-  // API health checks
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", app: "XO CLUB KATHMANDU FULLSTACK NETWORK" });
-  });
-
-  // Mount eSewa payment and admin routes
-  app.use("/api/payment", paymentRouter);
-  app.use("/api/admin", adminRouter);
 
   // Vite integration middleware for dev environment & SPA fallback in production
   if (process.env.NODE_ENV !== "production") {
@@ -31,15 +16,22 @@ async function startServer() {
   } else {
     // Serving production bundles
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    app.use(expressStaticFallback(distPath));
   }
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`XO Club Core server listening at http://0.0.0.0:${PORT}`);
   });
+}
+
+// Simple helper to register static fallback paths cleanly
+function expressStaticFallback(distPath: string) {
+  const expressAppRouter = express.Router();
+  expressAppRouter.use(express.static(distPath));
+  expressAppRouter.get("*", (req: any, res: any) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+  return expressAppRouter;
 }
 
 startServer();
