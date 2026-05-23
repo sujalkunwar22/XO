@@ -1,0 +1,6 @@
+{
+  "name": "XO Club Kathmandu",
+  "description": "An immersive, raw-neon, dark-mode digital hub for XO Club Kathmandu—Nepal’s ultimate luxury nightlife landmark in Thamel, featuring interactive 2.5D deep-scroll chambers, magnetic micro-interactions, and real-time lineup booking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
