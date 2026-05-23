@@ -6,9 +6,13 @@ import { StickyControls } from "./components/StickyControls";
 import { ScrollPathTracker } from "./components/ScrollPathTracker";
 import { VIPBooking } from "./components/VIPBooking";
 import { DotMeshBackground } from "./components/DotMeshBackground";
+import { ClubAlbumGallery } from "./components/ClubAlbumGallery";
 import { ClubEvent, VIPPackage } from "./types";
 import { Sparkles, Instagram, Flame, MapPin, Globe, Clock, ShieldAlert, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { EsewaFeedback } from "./components/EsewaFeedback";
+import { AdminPanel } from "./components/AdminPanel";
+import { EmployeePanel } from "./components/EmployeePanel";
 
 export default function App() {
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -20,6 +24,17 @@ export default function App() {
 
   // Continuously tracked scroll progress from 0 to 1
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  // Lightweight native router path state
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPath(window.location.pathname);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     // Check local storage for persistent age verification
@@ -79,6 +94,22 @@ export default function App() {
   const scrollToVIP = () => {
     document.getElementById("vip-section")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  if (path === "/payment/success") {
+    return <EsewaFeedback type="success" />;
+  }
+
+  if (path === "/payment/failure") {
+    return <EsewaFeedback type="failure" />;
+  }
+
+  if (path === "/admin") {
+    return <AdminPanel />;
+  }
+
+  if (path === "/employee") {
+    return <EmployeePanel />;
+  }
 
   return (
     <div className="relative min-h-screen bg-obsidian text-slate-100 selection:bg-[#EF4444] selection:text-white">
@@ -185,6 +216,9 @@ export default function App() {
         <div id="vip-section" className="w-full bg-transparent border-b border-neutral-900/60 flex flex-col justify-center min-h-[85vh]">
           <VipSection onBookVIPPackage={handleBookVIPClass} />
         </div>
+
+        {/* Section 3.5: Club Album Gallery */}
+        <ClubAlbumGallery />
 
         {/* Section 4: House Rules, Map and Footer */}
         <div id="info-section" className="w-full bg-transparent flex flex-col justify-between min-h-[85vh]">

@@ -20,6 +20,7 @@ export interface ClubEvent {
   doorPolicy: string;
   graphicStyle: "geometric" | "acid" | "hypnotic" | "industrial";
   targetDate: string; // ISO string format e.g. "2026-05-29T21:00:00"
+  gifUrl: string; // Looping high-fidelity GIF/video backdrop URL
 }
 
 export interface VIPPackage {
@@ -30,3 +31,13 @@ export interface VIPPackage {
   location: string;
   perks: string[];
 }
+
+export interface PhotoGroup {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+  coverImage: string;
+  images: string[];
+}
+

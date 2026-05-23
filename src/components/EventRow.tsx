@@ -151,7 +151,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBookClick }) => {
         scale: scaleSpring,
         willChange: "transform"
       }}
-      className="relative flex-shrink-0 w-[290px] sm:w-[340px] h-[480px] rounded-lg bg-white/5 border border-white/10 overflow-hidden group/card cursor-pointer select-none"
+      className="relative flex-shrink-0 w-[290px] sm:w-[340px] h-[520px] rounded-lg bg-white/5 border border-white/10 overflow-hidden group/card cursor-pointer select-none"
     >
       {/* Elastic Neon Glowing Border Outer Shadow */}
       <motion.div
@@ -172,8 +172,22 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBookClick }) => {
             willChange: "transform"
           }}
         >
-          {/* Note: Replaced dynamic poster styling colors inside PosterVisual dynamically based on Event Accent */}
-          <PosterVisual style={event.graphicStyle} title={event.title} headliner={event.headliner} />
+          {/* Looping high-fidelity atmospheric club/concert GIF image background */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={event.gifUrl} 
+              alt={event.title} 
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover filter brightness-[0.4] contrast-[1.15] saturate-[1.2] group-hover/card:brightness-[0.6] group-hover/card:scale-105 transition-all duration-700 pointer-events-none"
+            />
+            {/* Ambient dynamic dark gradient to ensure the text remains extremely legible */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent mix-blend-multiply" />
+          </div>
+
+          {/* Minimalist overlay vector layout for premium structural identity */}
+          <div className="absolute inset-0 z-10 opacity-40 group-hover/card:opacity-60 transition-all duration-500">
+            <PosterVisual style={event.graphicStyle} title={event.title} headliner={event.headliner} />
+          </div>
         </div>
       </div>
 
@@ -202,8 +216,8 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBookClick }) => {
 
       {/* Cinematic sliding drawer panel */}
       <motion.div
-        initial={{ y: "74%" }}
-        animate={{ y: isHovered ? "0%" : "74%" }}
+        initial={{ y: "75%" }}
+        animate={{ y: isHovered ? "0%" : "75%" }}
         transition={{ type: "spring", stiffness: 350, damping: 25 }}
         className="absolute inset-0 z-30 bg-black/95 border-t border-neutral-800 backdrop-blur-xl px-5 py-4 flex flex-col justify-between"
       >
@@ -223,7 +237,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBookClick }) => {
           </p>
 
           {/* Details Revealed inside Drawer */}
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-3 overflow-y-auto max-h-[220px] sm:max-h-[250px] pr-1" style={{ scrollbarWidth: "none" }}>
             <div>
               <span className="text-[9px] font-mono tracking-widest text-zinc-350 uppercase flex items-center gap-1 font-bold">
                 <Flame size={10} className="text-zinc-400" /> SUPPORT ROTATION
@@ -308,6 +322,27 @@ interface EventRowProps {
 
 export const EventRow: React.FC<EventRowProps> = ({ onBookClick }) => {
   const rowRef = useRef<HTMLDivElement>(null);
+  const [liveEvents, setLiveEvents] = useState<ClubEvent[]>(CLUB_EVENTS);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        const response = await fetch("/api/admin/events");
+        if (response.ok) {
+          const res = await response.json();
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            setLiveEvents(res.data);
+          }
+        }
+      } catch (err) {
+        console.warn("API load failed, using local copy:", err);
+      }
+    };
+
+    loadEvents();
+    const interval = setInterval(loadEvents, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const scrollRight = () => {
     if (rowRef.current) {
@@ -367,7 +402,7 @@ export const EventRow: React.FC<EventRowProps> = ({ onBookClick }) => {
           className="flex gap-6 overflow-x-auto px-6 md:px-12 pb-8 scrollbar-none snap-x snap-mandatory relative z-10"
           style={{ scrollbarWidth: "none" }}
         >
-          {CLUB_EVENTS.map((evt) => (
+          {liveEvents.map((evt) => (
             <div key={evt.id} className="snap-start">
               <EventCard event={evt} onBookClick={onBookClick} />
             </div>

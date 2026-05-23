@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ClubEvent, VIPPackage } from "../types";
 import { CLUB_EVENTS, VIP_PACKAGES } from "../data";
 import { X, Check, CreditCard, ShieldCheck, Terminal, RefreshCw, Sparkles } from "lucide-react";
+import { EsewaPaymentButton } from "./EsewaPaymentButton";
 
 interface VIPBookingProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const VIPBooking: React.FC<VIPBookingProps> = ({
   const [bookingStage, setBookingStage] = useState<"setup" | "validating" | "confirmed">("setup");
   const [terminalLog, setTerminalLog] = useState<string[]>([]);
   const [receiptCode, setReceiptCode] = useState("");
+  const [paymentOrderId, setPaymentOrderId] = useState("");
 
   useEffect(() => {
     if (initialEvent) {
@@ -41,6 +43,10 @@ export const VIPBooking: React.FC<VIPBookingProps> = ({
   useEffect(() => {
     setMode(initialMode);
     setBookingStage("setup");
+    if (isOpen) {
+      const randId = `XO-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+      setPaymentOrderId(randId);
+    }
   }, [initialMode, isOpen]);
 
   // Handle generating terminal logs
@@ -309,13 +315,49 @@ export const VIPBooking: React.FC<VIPBookingProps> = ({
                         <span className="text-base sm:text-lg font-bold text-white">NPR {ticketTotal.toLocaleString()}</span>
                       </div>
 
+                      {/* eSewa Sandbox Credentials Info Card */}
+                      <div className="p-3 bg-neutral-950 border border-neutral-850 rounded text-left font-mono text-[9px] text-zinc-450 space-y-1 uppercase leading-normal">
+                        <p className="text-[#EF4444] font-extrabold mb-1">// ESEWA SANDBOX GATEWAY LOGIN:</p>
+                        <p><span className="text-zinc-500">MOBILE / TEST ID:</span> <span className="text-white font-bold select-all">9806800001</span></p>
+                        <p><span className="text-zinc-500">M-PIN:</span> <span className="text-white font-bold select-all">1122</span> <span className="text-[8px] text-zinc-650">(NOT Nepal@123)</span></p>
+                        <p><span className="text-zinc-500">OTP MIN CODE:</span> <span className="text-white font-bold select-all">123456</span></p>
+                        <p className="text-[8px] text-zinc-600 mt-1 leading-normal italic">
+                          * NOTE: THE ESEWA SANDBOX RECAPTCHA GIVES RANDOM 401 ERRORS. IF THAT HAPPENS, USE THE OFFLINE BYPASS TO GENERATE THE QR CODE DIRECTLY.
+                        </p>
+                      </div>
+
+                      {/* Real eSewa gateway checkout trigger */}
+                      {name && email && agreePolicy ? (
+                        <EsewaPaymentButton
+                          amount={ticketTotal}
+                          orderId={paymentOrderId}
+                          guestName={name}
+                          guestEmail={email}
+                          bookingType={mode}
+                          typeName={mode === "ticket" ? selectedEvent.title : selectedVIP.name}
+                          count={mode === "ticket" ? count : 1}
+                          onInitiateProgress={(msg) => {
+                            setBookingStage("validating");
+                            setTerminalLog((prev) => [...prev, msg]);
+                          }}
+                          onError={(err) => {
+                            setBookingStage("setup");
+                            setTerminalLog((prev) => [...prev, `ESEWA CORE REJECTED STATUS: ${err}`]);
+                          }}
+                        />
+                      ) : (
+                        <div className="py-2 text-center text-[10px] font-mono text-zinc-650 bg-black/20 border border-dashed border-neutral-900 uppercase tracking-widest rounded">
+                          ENTER GUEST REGISTRATION AND AGREEMENT TO PROCEED
+                        </div>
+                      )}
+
                       <button
                         type="submit"
                         disabled={!name || !email || !agreePolicy}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded bg-white text-xs font-mono tracking-widest uppercase text-black font-extrabold hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 text-xs font-mono tracking-widest uppercase text-zinc-400 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer transition-all"
                       >
                         <CreditCard size={14} />
-                        INITIALIZE DEPOSIT SEQUENCE
+                        SIMULATE OFFLINE BYPASS ADMIT
                       </button>
                     </div>
                   </form>

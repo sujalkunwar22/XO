@@ -84,3 +84,16 @@ html, body {
   background: radial-gradient(circle, transparent 40%, rgba(5, 5, 5, 0.98) 100%),
               radial-gradient(circle, rgba(255, 255, 255, 0.01) 0%, transparent 70%);
 }
+
+/* Ensure html5-qrcode video element takes full size and scales correctly */
+#qr-reader {
+  border: none !important;
+}
+#qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+#qr-reader img {
+  display: none !important; /* Hide fallback image guides from showing over our beautiful viewer */
+}

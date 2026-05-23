@@ -16,7 +16,8 @@ export const CLUB_EVENTS: ClubEvent[] = [
     rawAccent: "#ffffff",
     doorPolicy: "SEXY SMART CASUAL / ENERGIZED SPIRIT MANDATORY",
     graphicStyle: "industrial",
-    targetDate: "2026-05-29T21:00:00"
+    targetDate: "2026-05-29T21:00:00",
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
   },
   {
     id: "evt-02",
@@ -33,7 +34,8 @@ export const CLUB_EVENTS: ClubEvent[] = [
     rawAccent: "#ffffff",
     doorPolicy: "XO CLUB SILVER & BLACK SIGNATURE / SMARTEST ATTIRE ONLY",
     graphicStyle: "hypnotic",
-    targetDate: "2026-05-30T22:00:00"
+    targetDate: "2026-05-30T22:00:00",
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTI1ZTI5N2YxbmtiaHZsM2Eza3p0bjYybTZsc2JjczRmbmxxczFpYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l2SpYdCg4a4mALtYc/giphy.gif"
   },
   {
     id: "evt-03",
@@ -50,7 +52,8 @@ export const CLUB_EVENTS: ClubEvent[] = [
     rawAccent: "#ffffff",
     doorPolicy: "BRIGHT NIGHTGLOW SASSY / SMART DRESSED ENTRY ONLY",
     graphicStyle: "acid",
-    targetDate: "2026-05-27T21:30:00"
+    targetDate: "2026-05-27T21:30:00",
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTV3dnd4ajhncDRrZTgxZ3E2Y21sdG0xam9tbm40eWExbnFlcjNpbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IccU6atP06X22tOveH/giphy.gif"
   },
   {
     id: "evt-04",
@@ -67,7 +70,8 @@ export const CLUB_EVENTS: ClubEvent[] = [
     rawAccent: "#ffffff",
     doorPolicy: "ALL BLACK WITH STRIKING MONOCHROME ACCENTS / STRICT 18+",
     graphicStyle: "geometric",
-    targetDate: "2026-05-28T22:00:00"
+    targetDate: "2026-05-28T22:00:00",
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnFlOXJ2YjNnZHIycm4xeXB2bDNlYTMyYTUxaXNoNjM4bGlkNDdzZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/39p233wA0wK64LOB6K/giphy.gif"
   }
 ];
 
@@ -117,3 +121,51 @@ export const VIP_PACKAGES: VIPPackage[] = [
     ]
   }
 ];
+
+export const PHOTO_GROUPS: PhotoGroup[] = [
+  {
+    id: "g-01",
+    title: "VOID LAUNCH TECHNO NIGHT",
+    date: "MAY 2026",
+    description: "An immersive glimpse into our modular laser grids and techno synth-scapes.",
+    coverImage: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1571266028243-34b311217e3f?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1489641499593-95edf228a025?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1518173946687-a4c8a383392e?q=80&w=1000&auto=format&fit=crop"
+    ]
+  },
+  {
+    id: "g-02",
+    title: "VIP PRESTIGE & LUXURY CODES",
+    date: "APRIL 2026",
+    description: "Capture the high society ambiance, luxury table sparklers, and black-leather booths.",
+    coverImage: "https://images.unsplash.com/photo-1485872224824-94e874c60252?q=80&w=1200&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1485872224824-94e874c60252?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1578474846511-04ba529f0b88?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?q=80&w=1000&auto=format&fit=crop"
+    ]
+  },
+  {
+    id: "g-03",
+    title: "LIVE ROCK EXTREME IN THAMEL",
+    date: "MARCH 2026",
+    description: "The peak adrenaline moments of local rock legend performances on the XO main-deck.",
+    coverImage: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1000&auto=format&fit=crop"
+    ]
+  }
+];
+
+import { PhotoGroup } from "./types";
+
