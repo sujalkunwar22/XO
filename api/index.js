@@ -118,25 +118,91 @@ async function verifyPayment(encodedData) {
   }
 }
 
+// backend/config/database.config.ts
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+dotenv.config();
+var supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+var supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+if (!supabaseUrl || !supabaseKey) {
+  console.warn("DB WARNING: Supabase URL or Key is missing. System will fall back to local in-memory simulation.");
+}
+var supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false
+  }
+}) : null;
+
 // backend/routes/payment.routes.ts
 var paymentRouter = Router();
 var ordersDatabase = /* @__PURE__ */ new Map();
-paymentRouter.post("/initiate", (req, res) => {
+async function getOrderRecord(orderId) {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("orders").select("*").eq("order_id", orderId).maybeSingle();
+      if (!error && data) {
+        return {
+          orderId: data.order_id,
+          amount: Number(data.amount),
+          guestName: data.guest_name,
+          guestEmail: data.guest_email,
+          type: data.type,
+          typeName: data.type_name,
+          count: Number(data.count),
+          status: data.status,
+          transactionCode: data.transaction_code || void 0,
+          verifiedAt: data.verified_at || void 0
+        };
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Supabase query failed, falling back to local memory:", err.message || err);
+    }
+  }
+  return ordersDatabase.get(orderId) || null;
+}
+async function saveOrderRecord(order) {
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("orders").upsert({
+        order_id: order.orderId,
+        amount: order.amount,
+        guest_name: order.guestName,
+        guest_email: order.guestEmail,
+        type: order.type,
+        type_name: order.typeName,
+        count: order.count,
+        status: order.status,
+        transaction_code: order.transactionCode || null,
+        verified_at: order.verifiedAt || null
+      });
+      if (!error) {
+        ordersDatabase.set(order.orderId, order);
+        return;
+      }
+      console.error("DB ERROR: Failed saving order to Supabase:", error.message);
+    } catch (err) {
+      console.error("DB EXCEPTION: Failed saving order to Supabase, writing to memory:", err.message || err);
+    }
+  }
+  ordersDatabase.set(order.orderId, order);
+}
+paymentRouter.post("/initiate", async (req, res) => {
   const { amount, orderId, guestName, guestEmail, type, typeName, count, successUrl, failureUrl } = req.body;
   if (!amount || !orderId) {
     res.status(400).json({ error: "Amount and orderId are required" });
     return;
   }
-  ordersDatabase.set(orderId, {
+  const record = {
     orderId,
-    amount,
+    amount: Number(amount),
     guestName: guestName || "ANONYMOUS REVELER",
     guestEmail: guestEmail || "resident@club-xo.com",
     type: type || "ticket",
     typeName: typeName || "General Admission",
     count: count || 1,
     status: "PENDING"
-  });
+  };
+  await saveOrderRecord(record);
   const payload = createPaymentPayload(Number(amount), orderId, successUrl, failureUrl);
   res.json({
     success: true,
@@ -152,38 +218,37 @@ paymentRouter.get("/verify", async (req, res) => {
   const result = await verifyPayment(data);
   if (result.isValid && result.data) {
     const transactionUuid = result.data.transaction_uuid;
-    const order = ordersDatabase.get(transactionUuid);
-    if (order) {
-      order.status = "PAID";
-      order.transactionCode = result.data.transaction_code;
-      order.verifiedAt = (/* @__PURE__ */ new Date()).toISOString();
-      ordersDatabase.set(transactionUuid, order);
-    } else {
-      ordersDatabase.set(transactionUuid, {
-        orderId: transactionUuid,
-        amount: Number(result.data.total_amount),
-        guestName: "XO VALUED GUEST",
-        guestEmail: "guest@club-xo.com",
-        type: "ticket",
-        typeName: result.data.product_code,
-        count: 1,
-        status: "PAID",
-        transactionCode: result.data.transaction_code,
-        verifiedAt: (/* @__PURE__ */ new Date()).toISOString()
-      });
-    }
+    const order = await getOrderRecord(transactionUuid);
+    const updatedOrder = order ? {
+      ...order,
+      status: "PAID",
+      transactionCode: result.data.transaction_code,
+      verifiedAt: (/* @__PURE__ */ new Date()).toISOString()
+    } : {
+      orderId: transactionUuid,
+      amount: Number(result.data.total_amount),
+      guestName: "XO GUEST",
+      guestEmail: "guest@club-xo.com",
+      type: "ticket",
+      typeName: result.data.product_code || "eSewa Direct Payment",
+      count: 1,
+      status: "PAID",
+      transactionCode: result.data.transaction_code,
+      verifiedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await saveOrderRecord(updatedOrder);
     res.json({
       success: true,
       message: "Payment successfully verified and ticket authorized",
-      order: ordersDatabase.get(transactionUuid) || result.data
+      order: updatedOrder
     });
   } else {
     const transactionUuid = result.data?.transaction_uuid;
     if (transactionUuid) {
-      const order = ordersDatabase.get(transactionUuid);
+      const order = await getOrderRecord(transactionUuid);
       if (order) {
         order.status = "FAILED";
-        ordersDatabase.set(transactionUuid, order);
+        await saveOrderRecord(order);
       }
     }
     res.json({
@@ -193,9 +258,9 @@ paymentRouter.get("/verify", async (req, res) => {
     });
   }
 });
-paymentRouter.get("/order/:orderId", (req, res) => {
+paymentRouter.get("/order/:orderId", async (req, res) => {
   const { orderId } = req.params;
-  const order = ordersDatabase.get(orderId);
+  const order = await getOrderRecord(orderId);
   if (!order) {
     res.status(404).json({ error: "Order not found" });
     return;
@@ -344,7 +409,118 @@ var dbVIPTables = [
   { id: "T-07", name: "ADAMSON ACOUSTIC 02", category: "ADAMSON CONSOLE DECK", capacity: 8, status: "VACANT" }
 ];
 var orderCheckins = /* @__PURE__ */ new Map();
-function syncVIPBookings() {
+async function seedEventsIfNeeded() {
+  if (!supabase) return;
+  try {
+    const { count, error } = await supabase.from("events").select("*", { count: "exact", head: true });
+    if (!error && count === 0) {
+      console.log("DB SEED: Seeding default events lineup...");
+      const payload = CLUB_EVENTS.map((e) => ({
+        id: e.id,
+        title: e.title,
+        date: e.date,
+        time: e.time,
+        headliner: e.headliner,
+        support: e.support,
+        subgenre: e.subgenre,
+        bpm: e.bpm,
+        ticket_price: e.ticketPrice,
+        available_tickets: e.availableTickets,
+        accent_color: e.accentColor,
+        raw_accent: e.rawAccent,
+        door_policy: e.doorPolicy,
+        graphic_style: e.graphicStyle,
+        target_date: e.targetDate,
+        gif_url: e.gifUrl
+      }));
+      await supabase.from("events").insert(payload);
+    }
+  } catch (err) {
+    console.error("DB SEED WARNING: Events auto-seeding failed:", err.message || err);
+  }
+}
+async function seedPhotosIfNeeded() {
+  if (!supabase) return;
+  try {
+    const { count, error } = await supabase.from("photo_groups").select("*", { count: "exact", head: true });
+    if (!error && count === 0) {
+      console.log("DB SEED: Seeding default photo gallery categories...");
+      const payload = PHOTO_GROUPS.map((p) => ({
+        id: p.id,
+        title: p.title,
+        date: p.date,
+        description: p.description,
+        cover_image: p.coverImage,
+        images: p.images
+      }));
+      await supabase.from("photo_groups").insert(payload);
+    }
+  } catch (err) {
+    console.error("DB SEED WARNING: Photos auto-seeding failed:", err.message || err);
+  }
+}
+async function seedTablesIfNeeded() {
+  if (!supabase) return;
+  try {
+    const { count, error } = await supabase.from("vip_tables").select("*", { count: "exact", head: true });
+    if (!error && count === 0) {
+      console.log("DB SEED: Seeding default VIP tables registry...");
+      const payload = dbVIPTables.map((t) => ({
+        id: t.id,
+        name: t.name,
+        category: t.category,
+        capacity: t.capacity,
+        status: t.status,
+        guest_name: t.guestName || null,
+        guest_email: t.guestEmail || null,
+        order_id: t.orderId || null,
+        bottle_notes: t.bottleNotes || null,
+        assigned_at: t.assignedAt || null
+      }));
+      await supabase.from("vip_tables").insert(payload);
+    }
+  } catch (err) {
+    console.error("DB SEED WARNING: VIP tables auto-seeding failed:", err.message || err);
+  }
+}
+function runBackgroundSeeds() {
+  seedEventsIfNeeded();
+  seedPhotosIfNeeded();
+  seedTablesIfNeeded();
+}
+async function syncVIPBookings() {
+  if (supabase) {
+    try {
+      const { data: paidVipOrders, error: orderError } = await supabase.from("orders").select("*").eq("status", "PAID").eq("type", "vip");
+      if (!orderError && paidVipOrders) {
+        const { data: tables, error: tableError } = await supabase.from("vip_tables").select("*");
+        if (!tableError && tables) {
+          for (const order of paidVipOrders) {
+            const orderId = order.order_id;
+            const tableAssigned = tables.find((t) => t.order_id === orderId);
+            if (!tableAssigned) {
+              const vacantTable = tables.find((t) => t.status === "VACANT" && t.category === order.type_name);
+              if (vacantTable) {
+                const now = order.verified_at || (/* @__PURE__ */ new Date()).toISOString();
+                await supabase.from("vip_tables").update({
+                  status: "TAKEN",
+                  guest_name: order.guest_name,
+                  guest_email: order.guest_email,
+                  order_id: orderId,
+                  assigned_at: now,
+                  bottle_notes: "eSewa VIP package digital allocation"
+                }).eq("id", vacantTable.id);
+                vacantTable.status = "TAKEN";
+                vacantTable.order_id = orderId;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("DB WARNING: VIP Table synchronization failed, using memory:", err.message || err);
+    }
+  }
   for (const [orderId, order] of ordersDatabase.entries()) {
     if (order.status === "PAID" && order.type === "vip") {
       const tableAssigned = dbVIPTables.find((t) => t.orderId === orderId);
@@ -362,10 +538,41 @@ function syncVIPBookings() {
     }
   }
 }
-adminRouter.get("/events", (req, res) => {
+adminRouter.get("/events", async (req, res) => {
+  runBackgroundSeeds();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("events").select("*").order("created_at", { ascending: true });
+      if (!error && data) {
+        const mappedEvents = data.map((e) => ({
+          id: e.id,
+          title: e.title,
+          date: e.date,
+          time: e.time,
+          headliner: e.headliner || void 0,
+          support: e.support || [],
+          subgenre: e.subgenre || void 0,
+          bpm: Number(e.bpm),
+          ticketPrice: Number(e.ticket_price),
+          availableTickets: Number(e.available_tickets),
+          accentColor: e.accent_color || void 0,
+          rawAccent: e.raw_accent || void 0,
+          doorPolicy: e.door_policy || void 0,
+          graphicStyle: e.graphic_style || void 0,
+          targetDate: e.target_date || void 0,
+          gifUrl: e.gif_url || void 0
+        }));
+        dbEvents = mappedEvents;
+        res.json({ success: true, data: mappedEvents });
+        return;
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Events query failed, using memory:", err.message || err);
+    }
+  }
   res.json({ success: true, data: dbEvents });
 });
-adminRouter.post("/events", (req, res) => {
+adminRouter.post("/events", async (req, res) => {
   const eventData = req.body;
   if (!eventData.title || !eventData.date || !eventData.time) {
     res.status(400).json({ success: false, error: "Title, date, and time are required." });
@@ -391,6 +598,35 @@ adminRouter.post("/events", (req, res) => {
     targetDate: eventData.targetDate || new Date(Date.now() + 7 * 864e5).toISOString(),
     gifUrl: eventData.gifUrl || "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
   };
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("events").upsert({
+        id: finalizedEvent.id,
+        title: finalizedEvent.title,
+        date: finalizedEvent.date,
+        time: finalizedEvent.time,
+        headliner: finalizedEvent.headliner,
+        support: finalizedEvent.support,
+        subgenre: finalizedEvent.subgenre,
+        bpm: finalizedEvent.bpm,
+        ticket_price: finalizedEvent.ticketPrice,
+        available_tickets: finalizedEvent.availableTickets,
+        accent_color: finalizedEvent.accentColor,
+        raw_accent: finalizedEvent.rawAccent,
+        door_policy: finalizedEvent.doorPolicy,
+        graphic_style: finalizedEvent.graphicStyle,
+        target_date: finalizedEvent.targetDate,
+        gif_url: finalizedEvent.gifUrl
+      });
+      if (!error) {
+        console.log("DB: Event saved successfully in Supabase.");
+      } else {
+        console.error("DB ERROR: Failed saving event to Supabase:", error.message);
+      }
+    } catch (err) {
+      console.error("DB EXCEPTION: Event saving failed:", err.message || err);
+    }
+  }
   if (existingIdx > -1) {
     dbEvents[existingIdx] = finalizedEvent;
   } else {
@@ -398,15 +634,48 @@ adminRouter.post("/events", (req, res) => {
   }
   res.json({ success: true, message: "Event saved successfully", data: finalizedEvent });
 });
-adminRouter.delete("/events/:id", (req, res) => {
+adminRouter.delete("/events/:id", async (req, res) => {
   const { id } = req.params;
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("events").delete().eq("id", id);
+      if (!error) {
+        console.log(`DB: Deleted event ${id} from Supabase.`);
+      } else {
+        console.error("DB ERROR: Failed deleting event:", error.message);
+      }
+    } catch (err) {
+      console.error("DB EXCEPTION: Event deleting failed:", err.message || err);
+    }
+  }
   dbEvents = dbEvents.filter((e) => e.id !== id);
   res.json({ success: true, message: "Event deleted from registry" });
 });
-adminRouter.get("/photos", (req, res) => {
+adminRouter.get("/photos", async (req, res) => {
+  runBackgroundSeeds();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("photo_groups").select("*").order("created_at", { ascending: false });
+      if (!error && data) {
+        const mappedPhotos = data.map((p) => ({
+          id: p.id,
+          title: p.title,
+          date: p.date || void 0,
+          description: p.description || void 0,
+          coverImage: p.cover_image,
+          images: p.images || []
+        }));
+        dbPhotoGroups = mappedPhotos;
+        res.json({ success: true, data: mappedPhotos });
+        return;
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Photos query failed, using memory:", err.message || err);
+    }
+  }
   res.json({ success: true, data: dbPhotoGroups });
 });
-adminRouter.post("/photos", (req, res) => {
+adminRouter.post("/photos", async (req, res) => {
   const payload = req.body;
   if (!payload.title || !payload.coverImage) {
     res.status(400).json({ success: false, error: "Title and Cover Image are required for photo folders." });
@@ -422,6 +691,25 @@ adminRouter.post("/photos", (req, res) => {
     coverImage: payload.coverImage,
     images: payload.images || []
   };
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("photo_groups").upsert({
+        id: finalizedGroup.id,
+        title: finalizedGroup.title,
+        date: finalizedGroup.date,
+        description: finalizedGroup.description,
+        cover_image: finalizedGroup.coverImage,
+        images: finalizedGroup.images
+      });
+      if (!error) {
+        console.log("DB: Photo group saved successfully in Supabase.");
+      } else {
+        console.error("DB ERROR: Failed saving photo group:", error.message);
+      }
+    } catch (err) {
+      console.error("DB EXCEPTION: Photo saving failed:", err.message || err);
+    }
+  }
   if (existingIdx > -1) {
     dbPhotoGroups[existingIdx] = finalizedGroup;
   } else {
@@ -429,16 +717,53 @@ adminRouter.post("/photos", (req, res) => {
   }
   res.json({ success: true, data: finalizedGroup });
 });
-adminRouter.delete("/photos/:id", (req, res) => {
+adminRouter.delete("/photos/:id", async (req, res) => {
   const { id } = req.params;
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("photo_groups").delete().eq("id", id);
+      if (!error) {
+        console.log(`DB: Deleted photo group ${id} from Supabase.`);
+      } else {
+        console.error("DB ERROR: Failed deleting photo group:", error.message);
+      }
+    } catch (err) {
+      console.error("DB EXCEPTION: Photo folder deleting failed:", err.message || err);
+    }
+  }
   dbPhotoGroups = dbPhotoGroups.filter((g) => g.id !== id);
   res.json({ success: true, message: "Folder deleted from sensory grid" });
 });
-adminRouter.get("/tables", (req, res) => {
-  syncVIPBookings();
+adminRouter.get("/tables", async (req, res) => {
+  runBackgroundSeeds();
+  await syncVIPBookings();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("vip_tables").select("*").order("id", { ascending: true });
+      if (!error && data) {
+        const mappedTables = data.map((t) => ({
+          id: t.id,
+          name: t.name,
+          category: t.category,
+          capacity: Number(t.capacity),
+          status: t.status,
+          guestName: t.guest_name || void 0,
+          guestEmail: t.guest_email || void 0,
+          orderId: t.order_id || void 0,
+          bottleNotes: t.bottle_notes || void 0,
+          assignedAt: t.assigned_at || void 0
+        }));
+        dbVIPTables = mappedTables;
+        res.json({ success: true, data: mappedTables });
+        return;
+      }
+    } catch (err) {
+      console.warn("DB WARNING: VIP tables query failed, using memory:", err.message || err);
+    }
+  }
   res.json({ success: true, data: dbVIPTables });
 });
-adminRouter.post("/tables", (req, res) => {
+adminRouter.post("/tables", async (req, res) => {
   const data = req.body;
   if (!data.name || !data.category) {
     res.status(400).json({ success: false, error: "Table name and category are required." });
@@ -458,6 +783,29 @@ adminRouter.post("/tables", (req, res) => {
     bottleNotes: data.bottleNotes,
     assignedAt: data.status === "TAKEN" ? data.assignedAt || (/* @__PURE__ */ new Date()).toISOString() : void 0
   };
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("vip_tables").upsert({
+        id: finalizedTable.id,
+        name: finalizedTable.name,
+        category: finalizedTable.category,
+        capacity: finalizedTable.capacity,
+        status: finalizedTable.status,
+        guest_name: finalizedTable.guestName || null,
+        guest_email: finalizedTable.guestEmail || null,
+        order_id: finalizedTable.orderId || null,
+        bottle_notes: finalizedTable.bottleNotes || null,
+        assigned_at: finalizedTable.assignedAt || null
+      });
+      if (!error) {
+        console.log("DB: VIP Table state updated in Supabase.");
+      } else {
+        console.error("DB ERROR: Failed updating VIP table state:", error.message);
+      }
+    } catch (err) {
+      console.error("DB EXCEPTION: VIP table save failed:", err.message || err);
+    }
+  }
   if (existingIdx > -1) {
     dbVIPTables[existingIdx] = finalizedTable;
   } else {
@@ -465,12 +813,72 @@ adminRouter.post("/tables", (req, res) => {
   }
   res.json({ success: true, data: finalizedTable });
 });
-adminRouter.delete("/tables/:id", (req, res) => {
+adminRouter.delete("/tables/:id", async (req, res) => {
   const { id } = req.params;
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("vip_tables").delete().eq("id", id);
+      if (!error) {
+        console.log(`DB: Deleted VIP table ${id} from Supabase.`);
+      } else {
+        console.error("DB ERROR: Failed deleting VIP table:", error.message);
+      }
+    } catch (err) {
+      console.error("DB EXCEPTION: VIP table deletion failed:", err.message || err);
+    }
+  }
   dbVIPTables = dbVIPTables.filter((t) => t.id !== id);
   res.json({ success: true, message: "Table removed from registry" });
 });
-adminRouter.get("/orders", (req, res) => {
+adminRouter.get("/orders", async (req, res) => {
+  if (supabase) {
+    try {
+      const { data: dbOrders, error: ordersError } = await supabase.from("orders").select("*");
+      const { data: dbCheckins, error: checkinsError } = await supabase.from("checkins").select("*");
+      if (!ordersError && dbOrders) {
+        const ordersList2 = dbOrders.map((o) => {
+          const scan = dbCheckins?.find((c) => c.order_id === o.order_id) || { checked_in: false, checked_in_at: null };
+          return {
+            orderId: o.order_id,
+            amount: Number(o.amount),
+            guestName: o.guest_name,
+            guestEmail: o.guest_email,
+            type: o.type,
+            typeName: o.type_name,
+            count: Number(o.count),
+            status: o.status,
+            transactionCode: o.transaction_code || void 0,
+            verifiedAt: o.verified_at || void 0,
+            checkedIn: scan.checked_in,
+            checkedInAt: scan.checked_in_at || void 0
+          };
+        });
+        ordersList2.forEach((item) => {
+          ordersDatabase.set(item.orderId, {
+            orderId: item.orderId,
+            amount: item.amount,
+            guestName: item.guestName,
+            guestEmail: item.guestEmail,
+            type: item.type,
+            typeName: item.typeName,
+            count: item.count,
+            status: item.status,
+            transactionCode: item.transactionCode,
+            verifiedAt: item.verifiedAt
+          });
+          orderCheckins.set(item.orderId, {
+            checkedIn: item.checkedIn,
+            checkedInAt: item.checkedInAt
+          });
+        });
+        ordersList2.sort((a, b) => b.orderId.localeCompare(a.orderId));
+        res.json({ success: true, data: ordersList2 });
+        return;
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Orders fetching failed, using memory:", err.message || err);
+    }
+  }
   const ordersList = [];
   ordersDatabase.forEach((order, key) => {
     const scanStatus = orderCheckins.get(key) || { checkedIn: false };
@@ -483,13 +891,37 @@ adminRouter.get("/orders", (req, res) => {
   ordersList.sort((a, b) => b.orderId.localeCompare(a.orderId));
   res.json({ success: true, data: ordersList });
 });
-adminRouter.post("/orders/verify-qr", (req, res) => {
+adminRouter.post("/orders/verify-qr", async (req, res) => {
   const { orderId } = req.body;
   if (!orderId) {
     res.status(400).json({ success: false, error: "Order ID is mandatory to confirm validation." });
     return;
   }
-  const order = ordersDatabase.get(orderId);
+  let order = null;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("orders").select("*").eq("order_id", orderId).maybeSingle();
+      if (!error && data) {
+        order = {
+          orderId: data.order_id,
+          amount: Number(data.amount),
+          guestName: data.guest_name,
+          guestEmail: data.guest_email,
+          type: data.type,
+          typeName: data.type_name,
+          count: Number(data.count),
+          status: data.status,
+          transactionCode: data.transaction_code,
+          verifiedAt: data.verified_at
+        };
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Order lookup during verify failed, checking memory:", err.message || err);
+    }
+  }
+  if (!order) {
+    order = ordersDatabase.get(orderId);
+  }
   if (!order) {
     res.status(404).json({ success: false, error: "QR Code unrecognized. Secure database contains no record for this pass." });
     return;
@@ -502,7 +934,23 @@ adminRouter.post("/orders/verify-qr", (req, res) => {
     });
     return;
   }
-  const existingCheckin = orderCheckins.get(orderId);
+  let existingCheckin = null;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("checkins").select("*").eq("order_id", orderId).maybeSingle();
+      if (!error && data) {
+        existingCheckin = {
+          checkedIn: data.checked_in,
+          checkedInAt: data.checked_in_at || void 0
+        };
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Checkin lookup failed, using memory:", err.message || err);
+    }
+  }
+  if (!existingCheckin) {
+    existingCheckin = orderCheckins.get(orderId) || null;
+  }
   if (existingCheckin?.checkedIn) {
     res.status(409).json({
       success: false,
@@ -514,6 +962,17 @@ adminRouter.post("/orders/verify-qr", (req, res) => {
     return;
   }
   const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (supabase) {
+    try {
+      await supabase.from("checkins").upsert({
+        order_id: orderId,
+        checked_in: true,
+        checked_in_at: now
+      });
+    } catch (err) {
+      console.error("DB EXCEPTION: Saving checkin failed:", err.message || err);
+    }
+  }
   orderCheckins.set(orderId, {
     checkedIn: true,
     checkedInAt: now
@@ -528,41 +987,229 @@ adminRouter.post("/orders/verify-qr", (req, res) => {
     }
   });
 });
-adminRouter.post("/orders/manually-set-paid", (req, res) => {
+adminRouter.post("/orders/manually-set-paid", async (req, res) => {
   const { orderId, status, checkedIn } = req.body;
-  const order = ordersDatabase.get(orderId);
-  if (order) {
-    order.status = status || "PAID";
-    if (status === "PAID" && !order.verifiedAt) {
-      order.verifiedAt = (/* @__PURE__ */ new Date()).toISOString();
+  const isPaid = (status || "PAID") === "PAID";
+  const verifiedTime = (/* @__PURE__ */ new Date()).toISOString();
+  let orderObj = null;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("orders").select("*").eq("order_id", orderId).maybeSingle();
+      if (!error && data) {
+        orderObj = data;
+      }
+    } catch (err) {
+      console.warn("DB WARNING: Manually set paid query lookup failed:", err.message || err);
     }
-    ordersDatabase.set(orderId, order);
-  } else {
-    ordersDatabase.set(orderId, {
-      orderId,
-      amount: 2e3,
-      guestName: "MANUALLY APPROVED GUEST",
-      guestEmail: "admin@club-xo.com",
-      type: "ticket",
-      typeName: "XO GENERAL TICKET",
-      count: 1,
-      status: "PAID",
-      verifiedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
   }
+  if (!orderObj) {
+    orderObj = ordersDatabase.get(orderId);
+  }
+  const finalizedOrder = orderObj ? {
+    orderId: orderObj.orderId || orderObj.order_id,
+    amount: Number(orderObj.amount),
+    guestName: orderObj.guestName || orderObj.guest_name,
+    guestEmail: orderObj.guestEmail || orderObj.guest_email,
+    type: orderObj.type,
+    typeName: orderObj.typeName || orderObj.type_name,
+    count: Number(orderObj.count),
+    status: status || "PAID",
+    transactionCode: orderObj.transactionCode || orderObj.transaction_code || "MANUAL_APPROVAL",
+    verifiedAt: orderObj.verifiedAt || orderObj.verified_at || (isPaid ? verifiedTime : void 0)
+  } : {
+    orderId,
+    amount: 2e3,
+    guestName: "MANUALLY APPROVED GUEST",
+    guestEmail: "admin@club-xo.com",
+    type: "ticket",
+    typeName: "XO GENERAL TICKET",
+    count: 1,
+    status: status || "PAID",
+    transactionCode: "MANUAL_APPROVAL",
+    verifiedAt: isPaid ? verifiedTime : void 0
+  };
+  if (supabase) {
+    try {
+      await supabase.from("orders").upsert({
+        order_id: finalizedOrder.orderId,
+        amount: finalizedOrder.amount,
+        guest_name: finalizedOrder.guestName,
+        guest_email: finalizedOrder.guestEmail,
+        type: finalizedOrder.type,
+        type_name: finalizedOrder.typeName,
+        count: finalizedOrder.count,
+        status: finalizedOrder.status,
+        transaction_code: finalizedOrder.transactionCode,
+        verified_at: finalizedOrder.verifiedAt || null
+      });
+    } catch (err) {
+      console.error("DB EXCEPTION: Saving manual paid order failed:", err.message || err);
+    }
+  }
+  ordersDatabase.set(orderId, finalizedOrder);
   if (checkedIn !== void 0) {
+    const isChecked = !!checkedIn;
+    const checkinTime = isChecked ? (/* @__PURE__ */ new Date()).toISOString() : null;
+    if (supabase) {
+      try {
+        if (isChecked) {
+          await supabase.from("checkins").upsert({
+            order_id: orderId,
+            checked_in: true,
+            checked_in_at: checkinTime
+          });
+        } else {
+          await supabase.from("checkins").delete().eq("order_id", orderId);
+        }
+      } catch (err) {
+        console.error("DB EXCEPTION: Saving manual checkin failed:", err.message || err);
+      }
+    }
     orderCheckins.set(orderId, {
-      checkedIn: !!checkedIn,
-      checkedInAt: !!checkedIn ? (/* @__PURE__ */ new Date()).toISOString() : void 0
+      checkedIn: isChecked,
+      checkedInAt: checkinTime || void 0
     });
   }
   res.json({ success: true, message: "Order records updated" });
 });
 
+// backend/config/database.init.ts
+import pg from "pg";
+import dotenv2 from "dotenv";
+dotenv2.config();
+var { Client } = pg;
+var isInitialized = false;
+async function initializeDatabase() {
+  if (isInitialized) return;
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.warn("DB INIT: DATABASE_URL is not set. Skipping DDL table initialization. Operating in memory or direct API client mode.");
+    isInitialized = true;
+    return;
+  }
+  try {
+    console.log("DB INIT: Initializing database tables...");
+    const client = new Client({
+      connectionString: dbUrl,
+      ssl: dbUrl.includes("localhost") ? false : { rejectUnauthorized: false }
+    });
+    await client.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS events (
+        id VARCHAR(100) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        date VARCHAR(100) NOT NULL,
+        time VARCHAR(100) NOT NULL,
+        headliner VARCHAR(255),
+        support JSONB DEFAULT '[]'::jsonb,
+        subgenre VARCHAR(255),
+        bpm INTEGER DEFAULT 128,
+        ticket_price NUMERIC DEFAULT 0,
+        available_tickets INTEGER DEFAULT 0,
+        accent_color VARCHAR(100),
+        raw_accent VARCHAR(50),
+        door_policy TEXT,
+        graphic_style VARCHAR(100),
+        target_date TIMESTAMP,
+        gif_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS photo_groups (
+        id VARCHAR(100) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        date VARCHAR(100),
+        description TEXT,
+        cover_image TEXT,
+        images JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        order_id VARCHAR(100) PRIMARY KEY,
+        amount NUMERIC NOT NULL,
+        guest_name VARCHAR(255),
+        guest_email VARCHAR(255),
+        type VARCHAR(50) DEFAULT 'ticket',
+        type_name VARCHAR(100),
+        count INTEGER DEFAULT 1,
+        status VARCHAR(50) DEFAULT 'PENDING',
+        transaction_code VARCHAR(100),
+        verified_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vip_tables (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(255) NOT NULL,
+        capacity INTEGER DEFAULT 10,
+        status VARCHAR(50) DEFAULT 'VACANT',
+        guest_name VARCHAR(255),
+        guest_email VARCHAR(255),
+        order_id VARCHAR(100),
+        bottle_notes TEXT,
+        assigned_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS checkins (
+        order_id VARCHAR(100) PRIMARY KEY REFERENCES orders(order_id) ON DELETE CASCADE,
+        checked_in BOOLEAN DEFAULT FALSE,
+        checked_in_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("DB INIT: All database tables verified / created successfully.");
+    await client.end();
+  } catch (error) {
+    console.error("DB INIT ERROR: Failed bootstrapping database tables:", error.message || error);
+  }
+  if (supabase) {
+    try {
+      console.log("DB INIT: Bootstrapping Supabase storage buckets...");
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      if (listError) {
+        console.warn("DB INIT WARNING: Could not query storage buckets:", listError.message);
+      } else {
+        const photoBucketExists = buckets?.some((b) => b.name === "photos");
+        if (!photoBucketExists) {
+          const { error: createError } = await supabase.storage.createBucket("photos", {
+            public: true,
+            allowedMimeTypes: ["image/png", "image/jpeg", "image/gif", "image/webp"]
+          });
+          if (createError) {
+            console.error("DB INIT ERROR: Could not create 'photos' storage bucket:", createError.message);
+          } else {
+            console.log("DB INIT: Storage bucket 'photos' successfully created programmatically.");
+          }
+        } else {
+          console.log("DB INIT: Storage bucket 'photos' already verified.");
+        }
+      }
+    } catch (bucketError) {
+      console.warn("DB INIT: Storage bootstrapping failed gracefully:", bucketError.message || bucketError);
+    }
+  }
+  isInitialized = true;
+}
+
 // backend/app.ts
 var app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(async (req, res, next) => {
+  try {
+    await initializeDatabase();
+  } catch (err) {
+    console.error("Database initialization failed asynchronously:", err);
+  }
+  next();
+});
 app.get("/api", (req, res) => {
   res.json({ status: "ok", app: "XO CLUB KATHMANDU FULLSTACK NETWORK", version: "v2.0.26" });
 });

@@ -1,12 +1,24 @@
 import express from "express";
 import { paymentRouter } from "./routes/payment.routes";
 import { adminRouter } from "./routes/admin.routes";
+import { initializeDatabase } from "./config/database.init";
 
 const app = express();
 
 // JSON Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Lazy DB and Storage Bucket Initializer
+app.use(async (req, res, next) => {
+  try {
+    await initializeDatabase();
+  } catch (err) {
+    console.error("Database initialization failed asynchronously:", err);
+  }
+  next();
+});
+
 
 // API root health checks
 app.get("/api", (req, res) => {
