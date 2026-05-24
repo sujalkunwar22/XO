@@ -5,37 +5,78 @@ import { ClubEvent } from "../types";
 import { PosterVisual } from "./PosterVisual";
 import { ChevronLeft, ChevronRight, Ticket, Flame, Info, Calendar } from "lucide-react";
 
+const cleanMediaUrl = (url: string): string => {
+  if (!url) return "";
+  
+  // Intercept and replace the specific broken Giphy URLs with gorgeous Unsplash images
+  if (url.includes("l0O9zk3Tq6V1zZ0oE")) {
+    return "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800"; // Epic Live Rock
+  }
+  if (url.includes("l2SpYdCg4a4mALtYc")) {
+    return "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=800"; // EDM Saturday Lasers
+  }
+  if (url.includes("IccU6atP06X22tOveH")) {
+    return "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800"; // Bollywood / Confetti Club
+  }
+  if (url.includes("39p233wA0wK64LOB6K")) {
+    return "https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=800"; // Underground Techno Visuals
+  }
+  
+  // General fallback for other broken/expired Giphy links
+  if (url.includes("giphy.com") && (url.includes("v1.Y2lk") || url.includes("/media/"))) {
+    return "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800";
+  }
+
+  return url;
+};
+
 const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> = ({ url, title, isHovered }) => {
   const [videoError, setVideoError] = React.useState(false);
 
-  if (!url) return null;
+  const cleanedUrl = cleanMediaUrl(url);
+  if (!cleanedUrl) return null;
 
   // Google Drive video URL parser regex pattern
-  const driveMatch = url.match(/(?:drive\.google\.com\/file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
-  if (driveMatch && !videoError) {
+  const driveMatch = cleanedUrl.match(/(?:drive\.google\.com\/file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+  if (driveMatch) {
     const fileId = driveMatch[1];
-    // Convert to direct downloadable stream source link
-    const directDriveUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
-    return (
-      <video
-        src={directDriveUrl}
-        autoPlay
-        loop
-        muted
-        playsInline
-        onError={() => {
-          console.warn("Google Drive video load failed. Falling back to standard cover.");
-          setVideoError(true);
-        }}
-        className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
-          isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
-        }`}
-      />
-    );
+    if (!videoError) {
+      const directDriveUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+      return (
+        <video
+          src={directDriveUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onError={() => {
+            console.warn("Google Drive direct video load failed. Falling back to iframe preview.");
+            setVideoError(true);
+          }}
+          className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
+            isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
+          }`}
+        />
+      );
+    } else {
+      return (
+        <div className="w-full h-full relative overflow-hidden pointer-events-none scale-[1.3] origin-center transition-all duration-700">
+          <iframe
+            src={`https://drive.google.com/file/d/${fileId}/preview`}
+            className={`absolute inset-0 w-full h-[120%] border-0 contrast-[1.1] saturate-[1.2] transition-all duration-700 pointer-events-none ${
+              isHovered ? "brightness-[0.85]" : "brightness-[0.6]"
+            }`}
+            allow="autoplay; encrypted-media"
+            scrolling="no"
+          />
+          <div className="absolute inset-0 z-10 bg-transparent" />
+        </div>
+      );
+    }
   }
 
   // Instagram Reel / Post / TV URL parser regex pattern
-  const instaMatch = url.match(/(?:instagram\.com\/(?:p|reel|tv)\/)([a-zA-Z0-9_-]+)/i);
+  const instaMatch = cleanedUrl.match(/(?:instagram\.com\/(?:p|reel|tv)\/)([a-zA-Z0-9_-]+)/i);
   if (instaMatch) {
     const shortcode = instaMatch[1];
     return (
@@ -56,11 +97,11 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
   }
 
   // Direct MP4 or dynamic video check
-  const isVideo = url.endsWith(".mp4") || url.includes(".mp4") || url.includes("video");
+  const isVideo = cleanedUrl.endsWith(".mp4") || cleanedUrl.includes(".mp4") || cleanedUrl.includes("video");
   if (isVideo && !videoError) {
     return (
       <video
-        src={url}
+        src={cleanedUrl}
         autoPlay
         loop
         muted
@@ -76,11 +117,10 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
     );
   }
 
-  // Standard high-fidelity static image / Giphy GIF fallback
-  // Fall back to a premium concert stage Unsplash photo if the user's video link failed
+  // Standard high-fidelity static image / Unsplash / GIF fallback
   const finalUrl = videoError
     ? "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800&auto=format&fit=crop"
-    : url;
+    : cleanedUrl;
 
   return (
     <img 

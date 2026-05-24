@@ -34,7 +34,7 @@ export const AdminPanel: React.FC = () => {
     doorPolicy: "SMART CASUAL / 18+ SECURITY MANDATORY",
     graphicStyle: "geometric",
     targetDate: new Date(Date.now() + 7 * 86450000).toISOString().slice(0, 16),
-    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
+    gifUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800"
   });
   const [supportInput, setSupportInput] = useState("");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -191,7 +191,7 @@ export const AdminPanel: React.FC = () => {
       doorPolicy: "SMART CASUAL / 18+ SECURITY MANDATORY",
       graphicStyle: "geometric",
       targetDate: new Date(Date.now() + 7 * 86450000).toISOString().slice(0, 16),
-      gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
+      gifUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800"
     });
     setSupportInput("");
   };
