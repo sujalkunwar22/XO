@@ -6,11 +6,13 @@ import { PosterVisual } from "./PosterVisual";
 import { ChevronLeft, ChevronRight, Ticket, Flame, Info, Calendar } from "lucide-react";
 
 const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> = ({ url, title, isHovered }) => {
+  const [videoError, setVideoError] = React.useState(false);
+
   if (!url) return null;
 
   // Google Drive video URL parser regex pattern
   const driveMatch = url.match(/(?:drive\.google\.com\/file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
-  if (driveMatch) {
+  if (driveMatch && !videoError) {
     const fileId = driveMatch[1];
     // Convert to direct downloadable stream source link
     const directDriveUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
@@ -21,6 +23,10 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
         loop
         muted
         playsInline
+        onError={() => {
+          console.warn("Google Drive video load failed. Falling back to standard cover.");
+          setVideoError(true);
+        }}
         className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
           isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
         }`}
@@ -51,7 +57,7 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
 
   // Direct MP4 or dynamic video check
   const isVideo = url.endsWith(".mp4") || url.includes(".mp4") || url.includes("video");
-  if (isVideo) {
+  if (isVideo && !videoError) {
     return (
       <video
         src={url}
@@ -59,6 +65,10 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
         loop
         muted
         playsInline
+        onError={() => {
+          console.warn("Direct video load failed. Falling back to static cover.");
+          setVideoError(true);
+        }}
         className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
           isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
         }`}
@@ -67,11 +77,20 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
   }
 
   // Standard high-fidelity static image / Giphy GIF fallback
+  // Fall back to a premium concert stage Unsplash photo if the user's video link failed
+  const finalUrl = videoError
+    ? "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800&auto=format&fit=crop"
+    : url;
+
   return (
     <img 
-      src={url} 
+      src={finalUrl} 
       alt={title} 
       referrerPolicy="no-referrer"
+      onError={(e) => {
+        // Ultimate fallback if even the primary image breaks
+        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800";
+      }}
       className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
         isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
       }`}
