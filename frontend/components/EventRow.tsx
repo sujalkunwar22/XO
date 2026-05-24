@@ -18,7 +18,7 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
         <iframe
           src={`https://www.instagram.com/reel/${shortcode}/embed/?utm_source=ig_embed`}
           className={`absolute inset-0 w-full h-[120%] border-0 contrast-[1.1] saturate-[1.2] transition-all duration-700 pointer-events-none ${
-            isHovered ? "brightness-[0.7]" : "brightness-[0.4]"
+            isHovered ? "brightness-[0.85]" : "brightness-[0.6]"
           }`}
           scrolling="no"
           allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
@@ -40,7 +40,7 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
         muted
         playsInline
         className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
-          isHovered ? "brightness-[0.7] scale-[1.05]" : "brightness-[0.4]"
+          isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
         }`}
       />
     );
@@ -53,7 +53,7 @@ const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> 
       alt={title} 
       referrerPolicy="no-referrer"
       className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
-        isHovered ? "brightness-[0.7] scale-[1.05]" : "brightness-[0.4]"
+        isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
       }`}
     />
   );
