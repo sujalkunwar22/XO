@@ -205,7 +205,7 @@ export default function App() {
                 // CRUCIAL SENSORY COGNITION
               </span>
               <h2 className="font-syne font-black text-3xl sm:text-5xl text-white uppercase leading-none tracking-tight">
-                XO CALENDAR EVENTS
+                {/* XO CALENDAR EVENTS */}
               </h2>
             </div>
             <EventRow onBookClick={handleBookTicket} />
