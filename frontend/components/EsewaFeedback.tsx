@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, XCircle, ShieldCheck, RefreshCw, Calendar, User, Mail, DollarSign, ArrowLeft, Ticket, Landmark, ShieldAlert } from "lucide-react";
+import { CheckCircle, XCircle, ShieldCheck, RefreshCw, Calendar, User, Mail, DollarSign, ArrowLeft, Ticket, Landmark, ShieldAlert, Download } from "lucide-react";
+import { toPng } from "html-to-image";
 
 interface EsewaFeedbackProps {
   type: "success" | "failure";
@@ -22,6 +23,38 @@ export const EsewaFeedback: React.FC<EsewaFeedbackProps> = ({ type }) => {
   const [verifying, setVerifying] = useState(type === "success");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleDownloadTicket = async () => {
+    const el = document.getElementById("premium-ticket-pass");
+    if (!el) return;
+
+    try {
+      setDownloading(true);
+      setDownloadError(null);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const dataUrl = await toPng(el, {
+        pixelRatio: 2.5, // Super crisp double-scale text
+        backgroundColor: "#0d0d0d", // Charcoal/midnight background of the physical ticket
+        style: {
+          transform: "scale(1)",
+          borderRadius: "12px",
+        },
+      });
+
+      const link = document.createElement("a");
+      link.download = `XO_KATHMANDU_PASS_${orderDetails?.orderId || "PASS"}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err: any) {
+      console.error("Failed to render and download your ticket pass:", err);
+      setDownloadError("Permission block or render error. Please take a standard screenshot to save!");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     if (type === "success") {
@@ -145,6 +178,7 @@ export const EsewaFeedback: React.FC<EsewaFeedbackProps> = ({ type }) => {
               width={cellSize + 0.1} // overlap to avoid tiny rendering gaps
               height={cellSize + 0.1}
               className="fill-zinc-950"
+              fill="#09090b"
             />
           );
         }
@@ -213,7 +247,7 @@ export const EsewaFeedback: React.FC<EsewaFeedbackProps> = ({ type }) => {
             </div>
 
             {/* Premium Dual Ticket Pass visual layout */}
-            <div className="relative bg-[#0d0d0d] border border-neutral-850 rounded-lg p-5 overflow-hidden">
+            <div id="premium-ticket-pass" className="relative bg-[#0d0d0d] border border-neutral-850 rounded-lg p-5 overflow-hidden">
               <div className="absolute top-1/2 -left-3.5 w-7 h-7 bg-[#050505] border border-neutral-850 rounded-full" />
               <div className="absolute top-1/2 -right-3.5 w-7 h-7 bg-[#050505] border border-neutral-850 rounded-full" />
               <div className="absolute top-0 inset-x-0 h-[3px] bg-red-500" />
@@ -290,6 +324,39 @@ export const EsewaFeedback: React.FC<EsewaFeedbackProps> = ({ type }) => {
                 </div>
               )}
             </div>
+
+            {/* Themed Download Button */}
+            <button
+              onClick={handleDownloadTicket}
+              disabled={downloading}
+              className={`w-full py-4 font-mono text-[11px] font-bold tracking-[0.2em] rounded-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer border ${
+                downloading
+                  ? "bg-neutral-900 border-neutral-800 text-zinc-500 cursor-not-allowed"
+                  : "bg-white text-black hover:bg-[#EF4444] hover:text-white border-white hover:border-[#EF4444] shadow-[0_0_25px_rgba(239,68,68,0.15)]"
+              }`}
+            >
+              {downloading ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin text-[#EF4444]" />
+                  GENERATING TICKET PASS...
+                </>
+              ) : (
+                <>
+                  <Download size={14} />
+                  DOWNLOAD TICKET PASS (UI THEMED)
+                </>
+              )}
+            </button>
+
+            {/* Error in rendering notification */}
+            {downloadError && (
+              <div className="p-3 bg-red-950/20 border border-red-900/30 rounded flex items-start gap-2 text-left">
+                <ShieldAlert size={14} className="text-[#EF4444] shrink-0 mt-0.5" />
+                <p className="font-mono text-[9px] text-zinc-400 uppercase leading-relaxed">
+                  DOWNLOAD FAULT: {downloadError}
+                </p>
+              </div>
+            )}
 
             {/* Error message override notice */}
             {errorMsg && (
