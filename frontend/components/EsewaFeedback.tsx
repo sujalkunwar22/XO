@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle, XCircle, ShieldCheck, RefreshCw, Calendar, User, Mail, DollarSign, ArrowLeft, Ticket, Landmark, ShieldAlert, Download } from "lucide-react";
 import { toPng } from "html-to-image";
+import QRCode from "qrcode";
 
 interface EsewaFeedbackProps {
   type: "success" | "failure";
@@ -25,6 +26,30 @@ export const EsewaFeedback: React.FC<EsewaFeedbackProps> = ({ type }) => {
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (orderDetails?.orderId) {
+      QRCode.toDataURL(
+        orderDetails.orderId,
+        {
+          margin: 1,
+          width: 256,
+          color: {
+            dark: "#000000",
+            light: "#ffffff"
+          }
+        },
+        (err, url) => {
+          if (!err && url) {
+            setQrDataUrl(url);
+          } else {
+            console.error("QR Code rendering failed:", err);
+          }
+        }
+      );
+    }
+  }, [orderDetails?.orderId]);
 
   const handleDownloadTicket = async () => {
     const el = document.getElementById("premium-ticket-pass");
@@ -313,13 +338,22 @@ export const EsewaFeedback: React.FC<EsewaFeedbackProps> = ({ type }) => {
               {/* Scannable Real QR code vector */}
               {orderDetails?.orderId && (
                 <div className="space-y-3 flex flex-col items-center">
-                  <div className="w-36 h-36 bg-white p-3.5 rounded flex items-center justify-center relative shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-neutral-900 group">
+                  <div className="w-36 h-36 bg-white p-2 rounded flex items-center justify-center relative shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-neutral-900 overflow-hidden">
                     {/* Retro line scanner effect */}
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#EF4444]/15 to-transparent w-full h-[1.5px] animate-bounce pointer-events-none" />
-                    {renderQRCodeSvg(orderDetails.orderId)}
+                    {qrDataUrl ? (
+                      <img 
+                        src={qrDataUrl} 
+                        alt="Secure Ticket Verification Code" 
+                        className="w-full h-full object-contain" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <span className="text-[9px] font-mono text-zinc-500 animate-pulse">GENERATING SECURITY PATTERN...</span>
+                    )}
                   </div>
-                  <span className="text-[8px] text-zinc-550 uppercase tracking-widest text-center block">
-                    SCAN AT ENTRANCE PORTAL gate // CODES VALIDATED
+                  <span className="text-[8px] text-zinc-500 uppercase tracking-widest text-center block">
+                    SCAN AT ENTRANCE PORTAL GATE // VERIFIED PASS
                   </span>
                 </div>
               )}

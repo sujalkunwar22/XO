@@ -75,8 +75,30 @@ export const EmployeePanel: React.FC = () => {
   /* =========================================================================
      VERIFY OR SCAN TICKET CODE
      ========================================================================= */
+  const extractOrderId = (text: string): string => {
+    const trimmed = text.trim();
+    try {
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        const url = new URL(trimmed);
+        const orderId = url.searchParams.get("orderId") || url.searchParams.get("id");
+        if (orderId) return orderId;
+        
+        // Match UUID part at the end of path
+        const parts = url.pathname.split("/");
+        const lastPart = parts[parts.length - 1];
+        if (lastPart && lastPart.length > 10) {
+          return lastPart;
+        }
+      }
+    } catch (e) {
+      // Treat as standard raw ID
+    }
+    return trimmed;
+  };
+
   const handleVerifyId = async (orderIdToScan: string) => {
-    if (!orderIdToScan.trim()) return;
+    const orderId = extractOrderId(orderIdToScan);
+    if (!orderId) return;
     setVerifyingScan(true);
     setScanResult(null);
 
@@ -84,7 +106,7 @@ export const EmployeePanel: React.FC = () => {
       const response = await fetch("/api/admin/orders/verify-qr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: orderIdToScan.trim() })
+        body: JSON.stringify({ orderId })
       });
 
       const data = await response.json();
@@ -137,18 +159,21 @@ export const EmployeePanel: React.FC = () => {
             return;
           }
 
-          qrScanner = new Html5Qrcode("qr-reader");
+          if (!isActive) return;
 
-          await qrScanner.start(
+          const scannerInstance = new Html5Qrcode("qr-reader");
+          qrScanner = scannerInstance;
+
+          await scannerInstance.start(
             { facingMode: "environment" },
             {
               fps: 15,
               qrbox: (width, height) => {
                 const smallerDimension = Math.min(width, height);
-                const size = Math.floor(smallerDimension * 0.7);
+                const size = Math.floor(smallerDimension * 0.75);
                 return { width: size, height: size };
               },
-              aspectRatio: 1.777778,
+              aspectRatio: 1.0,
             },
             (decodedText) => {
               if (!isActive) return;
@@ -161,6 +186,15 @@ export const EmployeePanel: React.FC = () => {
               // Idle noise / scanner search interval
             }
           );
+
+          // If cleanup happened during start promise flight, stop it instantly
+          if (!isActive) {
+            scannerInstance.stop()
+              .then(() => {
+                try { scannerInstance.clear(); } catch (e) {}
+              })
+              .catch((e) => console.warn("Stop on flight failed:", e));
+          }
         } catch (err: any) {
           console.error("Failed to start html5-qrcode standard stream:", err);
           if (isActive) {
@@ -178,8 +212,17 @@ export const EmployeePanel: React.FC = () => {
       return () => {
         clearTimeout(timeoutId);
         isActive = false;
-        if (qrScanner && qrScanner.isScanning) {
-          qrScanner.stop().catch((e) => console.warn("Stopping scanner failed:", e));
+        if (qrScanner) {
+          const currentScanner = qrScanner;
+          if (currentScanner.isScanning) {
+            currentScanner.stop()
+              .then(() => {
+                try { currentScanner.clear(); } catch (e) {}
+              })
+              .catch((e) => console.warn("Stopping scanner failed:", e));
+          } else {
+            try { currentScanner.clear(); } catch (e) {}
+          }
         }
       };
     }
@@ -310,42 +353,49 @@ export const EmployeePanel: React.FC = () => {
               INTELLIGENT INTEGRATED SCANNER
             </h2>
 
-            {/* Simulated Live Viewfinder */}
-            <div className="mb-4 aspect-video rounded-sm bg-neutral-950 border border-neutral-850 relative overflow-hidden flex flex-col justify-center items-center text-center p-4">
+            {/* Intelligent Dual Mode Viewfinder (Fully responsive and fluid) */}
+            <div className="mb-4 w-full aspect-square max-h-[380px] bg-neutral-950 border border-neutral-850 rounded-md relative overflow-hidden flex flex-col justify-center items-center text-center p-4">
+              {/* Actual camera video target container (Always mounted to avoid HTML5 race conditions, styled responsively) */}
+              <div 
+                id="qr-reader" 
+                className={`absolute inset-0 w-full h-full overflow-hidden bg-black object-cover z-0 transition-opacity duration-300 ${
+                  cameraActive ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                }`} 
+              />
+
               {cameraActive ? (
                 <>
-                  {/* Actual camera video target container */}
-                  <div id="qr-reader" className="absolute inset-0 w-full h-full overflow-hidden bg-black object-cover z-0" />
-
-                  {/* Camera backdrop look */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(99,102,241,0.12)_0%,transparent_70%)] opacity-80 pointer-events-none z-10" />
+                  {/* Camera backdrop scanner halo */}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_70%)] opacity-80 pointer-events-none z-10" />
                   
-                  {/* Animated laser line scanner */}
-                  <div className="absolute left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_10px_#6366f1] animate-bounce top-0 bottom-0 pointer-events-none z-20" />
+                  {/* Glowing neon laser scanner line */}
+                  <div className="absolute left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_12px_#6366f1] animate-bounce top-0 bottom-0 pointer-events-none z-20" />
                   
-                  {/* Custom viewport target reticle */}
-                  <div className="w-40 h-40 border border-dashed border-indigo-400/40 rounded flex items-center justify-center relative pointer-events-none z-20">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-indigo-500" />
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-indigo-500" />
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-indigo-500" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-indigo-500" />
-                    <span className="font-mono text-[8px] text-indigo-400 tracking-widest leading-none animate-pulse">
-                      WAITING PASS...
+                  {/* CSS-drawn reticle targets for fast align */}
+                  <div className="w-48 h-48 sm:w-56 sm:h-56 border border-dashed border-indigo-400/30 rounded flex items-center justify-center relative pointer-events-none z-20">
+                    <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-indigo-500" />
+                    <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-indigo-500" />
+                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-indigo-500" />
+                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-indigo-500" />
+                    <span className="font-mono text-[9px] text-indigo-400 tracking-[0.2em] uppercase font-bold animate-pulse">
+                      FOCUS QR PASS
                     </span>
                   </div>
 
-                  <p className="font-mono text-[9px] text-zinc-400 mt-4 uppercase z-20 pointer-events-none bg-black/60 px-2 py-0.5 rounded border border-neutral-800">
-                    // CAMERA FEED LIVE
+                  <p className="font-mono text-[8px] sm:text-[9px] text-emerald-400 mt-4 uppercase z-20 pointer-events-none bg-black/85 px-2.5 py-1 rounded border border-emerald-950 tracking-wider">
+                    // CAMERA FEED SYSTEM ACTIVE //
                   </p>
                 </>
               ) : (
-                <div className="space-y-3 p-4">
-                  <div className="w-12 h-12 rounded-full border border-neutral-800 bg-black flex items-center justify-center mx-auto">
-                    <Scan size={20} className="text-zinc-500" />
+                <div className="space-y-4 p-4 z-10 max-w-xs">
+                  <div className="w-14 h-14 rounded-full border border-neutral-800 bg-neutral-900/50 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(255,255,255,0.02)]">
+                    <Scan size={24} className="text-zinc-400" />
                   </div>
                   <div>
-                    <p className="font-mono text-[10px] text-zinc-400 uppercase font-black">CAMERA SCANNING VIEWPORT STANDBY</p>
-                    <p className="text-[9px] text-zinc-650 font-mono mt-1">Activate viewport or pass an Order UUID to process validity.</p>
+                    <h4 className="font-mono text-[11px] text-zinc-300 uppercase font-black tracking-wider">STANDBY VIEWPORT DISENGAGED</h4>
+                    <p className="text-[9px] text-zinc-500 font-mono mt-1.5 uppercase leading-relaxed">
+                      TAP "OPEN FEED" TO ACTIVATE CAMERA SCANNING OR MANUALLY TYPE THE VOUCHER ID BELOW.
+                    </p>
                   </div>
                 </div>
               )}
@@ -353,9 +403,9 @@ export const EmployeePanel: React.FC = () => {
               {/* Viewfinder toggles */}
               <button
                 onClick={toggleCameraScanner}
-                className="absolute bottom-3 right-3 px-2.5 py-1 bg-neutral-900 border border-neutral-800 hover:text-[#6366f1] hover:border-[#6366f1] font-mono text-[8px] uppercase font-bold rounded-sm cursor-pointer transition-all z-30"
+                className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/90 border border-neutral-800 hover:text-white hover:border-indigo-500 font-mono text-[9px] uppercase font-bold rounded-sm cursor-pointer transition-all z-30 tracking-widest text-zinc-400 shadow-md animate-pulse"
               >
-                {cameraActive ? "SHUT CONSOLE" : "OPEN FEED"}
+                {cameraActive ? "CLOSE FEED" : "OPEN FEED"}
               </button>
             </div>
 
