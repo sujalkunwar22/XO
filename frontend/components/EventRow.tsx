@@ -8,6 +8,26 @@ import { ChevronLeft, ChevronRight, Ticket, Flame, Info, Calendar } from "lucide
 const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> = ({ url, title, isHovered }) => {
   if (!url) return null;
 
+  // Google Drive video URL parser regex pattern
+  const driveMatch = url.match(/(?:drive\.google\.com\/file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+  if (driveMatch) {
+    const fileId = driveMatch[1];
+    // Convert to direct downloadable stream source link
+    const directDriveUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+    return (
+      <video
+        src={directDriveUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
+          isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
+        }`}
+      />
+    );
+  }
+
   // Instagram Reel / Post / TV URL parser regex pattern
   const instaMatch = url.match(/(?:instagram\.com\/(?:p|reel|tv)\/)([a-zA-Z0-9_-]+)/i);
   if (instaMatch) {
