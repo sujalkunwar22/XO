@@ -8,24 +8,34 @@ import { ChevronLeft, ChevronRight, Ticket, Flame, Info, Calendar } from "lucide
 const EventMedia: React.FC<{ url: string; title: string; isHovered?: boolean }> = ({ url, title, isHovered }) => {
   if (!url) return null;
 
-  // Instagram Reel / Post / TV URL parser regex pattern
-  const instaMatch = url.match(/(?:instagram\.com\/(?:p|reel|tv)\/)([a-zA-Z0-9_-]+)/i);
-  if (instaMatch) {
-    const shortcode = instaMatch[1];
+  // Check if it is an Instagram link
+  const isInstagram = url.includes("instagram.com");
+  if (isInstagram) {
+    // Dynamically convert standard link to direct mp4 proxy link using ddinstagram / fixedgram engine
+    // ddinstagram handles Discord/Telegram client embedding perfectly by providing direct video stream headers
+    let directMediaUrl = url;
+    
+    // Clean URL query parameters and match code
+    const cleanUrl = url.split("?")[0].replace(/\/$/, "");
+    const match = cleanUrl.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
+    
+    if (match) {
+      const shortcode = match[1];
+      // Format to proxy direct video stream source
+      directMediaUrl = `https://ddinstagram.com/images/${shortcode}/video.mp4`;
+    }
+
     return (
-      <div className="w-full h-full relative overflow-hidden pointer-events-none scale-[1.7] origin-center transition-all duration-700">
-        {/* Render a muted pointer-events-none embed layout of the instagram reel, cropped significantly by scale-[1.7] */}
-        <iframe
-          src={`https://www.instagram.com/reel/${shortcode}/embed/?utm_source=ig_embed`}
-          className={`absolute inset-0 w-full h-[120%] border-0 contrast-[1.1] saturate-[1.2] transition-all duration-700 pointer-events-none ${
-            isHovered ? "brightness-[0.85]" : "brightness-[0.6]"
-          }`}
-          scrolling="no"
-          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-        />
-        {/* Cover absolute overlay block to protect interactions */}
-        <div className="absolute inset-0 z-10 bg-transparent" />
-      </div>
+      <video
+        src={directMediaUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className={`w-full h-full object-cover contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none ${
+          isHovered ? "brightness-[0.85] scale-[1.05]" : "brightness-[0.6]"
+        }`}
+      />
     );
   }
 
