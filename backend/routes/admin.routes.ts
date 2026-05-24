@@ -277,7 +277,7 @@ adminRouter.post("/events", async (req: Request, res: Response) => {
     doorPolicy: eventData.doorPolicy || "SMART DRESSED ATTIRE",
     graphicStyle: eventData.graphicStyle || "industrial",
     targetDate: eventData.targetDate || new Date(Date.now() + 7 * 86400000).toISOString(),
-    gifUrl: eventData.gifUrl || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800"
+    gifUrl: eventData.gifUrl || "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
   };
 
   if (supabase) {

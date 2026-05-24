@@ -290,7 +290,7 @@ var CLUB_EVENTS = [
     doorPolicy: "SEXY SMART CASUAL / ENERGIZED SPIRIT MANDATORY",
     graphicStyle: "industrial",
     targetDate: "2026-05-29T21:00:00",
-    gifUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800"
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
   },
   {
     id: "evt-02",
@@ -309,7 +309,7 @@ var CLUB_EVENTS = [
     doorPolicy: "XO CLUB SILVER & BLACK SIGNATURE / SMARTEST ATTIRE ONLY",
     graphicStyle: "hypnotic",
     targetDate: "2026-05-30T22:00:00",
-    gifUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=800"
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTI1ZTI5N2YxbmtiaHZsM2Eza3p0bjYybTZsc2JjczRmbmxxczFpYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l2SpYdCg4a4mALtYc/giphy.gif"
   },
   {
     id: "evt-03",
@@ -328,7 +328,7 @@ var CLUB_EVENTS = [
     doorPolicy: "BRIGHT NIGHTGLOW SASSY / SMART DRESSED ENTRY ONLY",
     graphicStyle: "acid",
     targetDate: "2026-05-27T21:30:00",
-    gifUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800"
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTV3dnd4ajhncDRrZTgxZ3E2Y21sdG0xam9tbm40eWExbnFlcjNpbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IccU6atP06X22tOveH/giphy.gif"
   },
   {
     id: "evt-04",
@@ -347,7 +347,7 @@ var CLUB_EVENTS = [
     doorPolicy: "ALL BLACK WITH STRIKING MONOCHROME ACCENTS / STRICT 18+",
     graphicStyle: "geometric",
     targetDate: "2026-05-28T22:00:00",
-    gifUrl: "https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=800"
+    gifUrl: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnFlOXJ2YjNnZHIycm4xeXB2bDNlYTMyYTUxaXNoNjM4bGlkNDdzZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/39p233wA0wK64LOB6K/giphy.gif"
   }
 ];
 var PHOTO_GROUPS = [
@@ -596,7 +596,7 @@ adminRouter.post("/events", async (req, res) => {
     doorPolicy: eventData.doorPolicy || "SMART DRESSED ATTIRE",
     graphicStyle: eventData.graphicStyle || "industrial",
     targetDate: eventData.targetDate || new Date(Date.now() + 7 * 864e5).toISOString(),
-    gifUrl: eventData.gifUrl || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800"
+    gifUrl: eventData.gifUrl || "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG5pczByNGNrbXB2OXUwdXR3d3loNzNqdzFycWR2dzBvdWhhczZ5MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0O9zk3Tq6V1zZ0oE/giphy.gif"
   };
   if (supabase) {
     try {

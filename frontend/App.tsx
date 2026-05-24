@@ -198,7 +198,19 @@ export default function App() {
         />
 
         {/* Section 2: XO Calendar Events */}
-        <EventRow onBookClick={handleBookTicket} />
+        <div id="events-section" className="w-full bg-transparent border-b border-neutral-900/60 flex flex-col justify-center select-text">
+          <div className="w-full max-w-7xl mx-auto px-6 py-24 flex flex-col justify-center min-h-[85vh]">
+            <div className="text-center mb-16">
+              <span className="font-mono text-[10px] text-[#EF4444] tracking-[0.3em] font-bold block mb-3 uppercase">
+                // CRUCIAL SENSORY COGNITION
+              </span>
+              <h2 className="font-syne font-black text-3xl sm:text-5xl text-white uppercase leading-none tracking-tight">
+                XO CALENDAR EVENTS
+              </h2>
+            </div>
+            <EventRow onBookClick={handleBookTicket} />
+          </div>
+        </div>
 
         {/* Section 3: VIP Spaces */}
         <div id="vip-section" className="w-full bg-transparent border-b border-neutral-900/60 flex flex-col justify-center min-h-[85vh]">
