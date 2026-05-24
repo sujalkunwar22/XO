@@ -8,5 +8,4 @@ coverage/
 !.env.example
 server.cjs
 server.cjs.map
-api/index.js
 
