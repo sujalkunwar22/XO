@@ -214,15 +214,14 @@ export const EmployeePanel: React.FC = () => {
         isActive = false;
         if (qrScanner) {
           const currentScanner = qrScanner;
-          if (currentScanner.isScanning) {
-            currentScanner.stop()
-              .then(() => {
-                try { currentScanner.clear(); } catch (e) {}
-              })
-              .catch((e) => console.warn("Stopping scanner failed:", e));
-          } else {
-            try { currentScanner.clear(); } catch (e) {}
-          }
+          currentScanner.stop()
+            .then(() => {
+              try { currentScanner.clear(); } catch (e) {}
+            })
+            .catch((e) => {
+              // Scanner wasn't running, just clear it
+              try { currentScanner.clear(); } catch (e2) {}
+            });
         }
       };
     }
