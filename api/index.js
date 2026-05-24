@@ -1211,10 +1211,19 @@ app.use(async (req, res, next) => {
   next();
 });
 app.get("/api", (req, res) => {
-  res.json({ status: "ok", app: "XO CLUB KATHMANDU FULLSTACK NETWORK", version: "v2.0.26" });
+  res.json({
+    status: "ok",
+    app: "XO CLUB KATHMANDU FULLSTACK NETWORK",
+    version: "v2.0.26",
+    database: supabase ? "supabase" : "in-memory"
+  });
 });
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", app: "XO CLUB KATHMANDU FULLSTACK NETWORK" });
+  res.json({
+    status: "ok",
+    app: "XO CLUB KATHMANDU FULLSTACK NETWORK",
+    database: supabase ? "supabase" : "in-memory"
+  });
 });
 app.use("/api/payment", paymentRouter);
 app.get("/api/admin", (req, res) => {

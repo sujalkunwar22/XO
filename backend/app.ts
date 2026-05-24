@@ -2,6 +2,7 @@ import express from "express";
 import { paymentRouter } from "./routes/payment.routes";
 import { adminRouter } from "./routes/admin.routes";
 import { initializeDatabase } from "./config/database.init";
+import { supabase } from "./config/database.config";
 
 const app = express();
 
@@ -22,11 +23,20 @@ app.use(async (req, res, next) => {
 
 // API root health checks
 app.get("/api", (req, res) => {
-  res.json({ status: "ok", app: "XO CLUB KATHMANDU FULLSTACK NETWORK", version: "v2.0.26" });
+  res.json({ 
+    status: "ok", 
+    app: "XO CLUB KATHMANDU FULLSTACK NETWORK", 
+    version: "v2.0.26",
+    database: supabase ? "supabase" : "in-memory"
+  });
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", app: "XO CLUB KATHMANDU FULLSTACK NETWORK" });
+  res.json({ 
+    status: "ok", 
+    app: "XO CLUB KATHMANDU FULLSTACK NETWORK",
+    database: supabase ? "supabase" : "in-memory"
+  });
 });
 
 // Mount eSewa payment routes

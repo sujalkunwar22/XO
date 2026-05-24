@@ -5,6 +5,54 @@ import { ClubEvent } from "../types";
 import { PosterVisual } from "./PosterVisual";
 import { ChevronLeft, ChevronRight, Ticket, Flame, Info, Calendar } from "lucide-react";
 
+const EventMedia: React.FC<{ url: string; title: string }> = ({ url, title }) => {
+  if (!url) return null;
+
+  // Instagram Reel / Post / TV URL parser regex pattern
+  const instaMatch = url.match(/(?:instagram\.com\/(?:p|reel|tv)\/)([a-zA-Z0-9_-]+)/i);
+  if (instaMatch) {
+    const shortcode = instaMatch[1];
+    return (
+      <div className="w-full h-full relative overflow-hidden pointer-events-none scale-[1.35] origin-center">
+        {/* Render a muted pointer-events-none embed layout of the instagram reel */}
+        <iframe
+          src={`https://www.instagram.com/reel/${shortcode}/embed/?utm_source=ig_embed`}
+          className="absolute inset-0 w-full h-[120%] border-0 filter brightness-[0.45] contrast-[1.1] saturate-[1.2] transition-all duration-700 pointer-events-none"
+          scrolling="no"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+        />
+        {/* Cover absolute overlay block to protect interactions */}
+        <div className="absolute inset-0 z-10 bg-transparent" />
+      </div>
+    );
+  }
+
+  // Direct MP4 or dynamic video check
+  const isVideo = url.endsWith(".mp4") || url.includes(".mp4") || url.includes("video");
+  if (isVideo) {
+    return (
+      <video
+        src={url}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="w-full h-full object-cover filter brightness-[0.4] contrast-[1.15] saturate-[1.2] transition-all duration-700 pointer-events-none"
+      />
+    );
+  }
+
+  // Standard high-fidelity static image / Giphy GIF fallback
+  return (
+    <img 
+      src={url} 
+      alt={title} 
+      referrerPolicy="no-referrer"
+      className="w-full h-full object-cover filter brightness-[0.4] contrast-[1.15] saturate-[1.2] group-hover/card:brightness-[0.6] group-hover/card:scale-105 transition-all duration-700 pointer-events-none"
+    />
+  );
+};
+
 interface EventCardProps {
   event: ClubEvent;
   onBookClick: (event: ClubEvent) => void;
@@ -172,14 +220,9 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBookClick }) => {
             willChange: "transform"
           }}
         >
-          {/* Looping high-fidelity atmospheric club/concert GIF image background */}
+          {/* Dynamic dynamic backdrop element */}
           <div className="absolute inset-0 z-0">
-            <img 
-              src={event.gifUrl} 
-              alt={event.title} 
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover filter brightness-[0.4] contrast-[1.15] saturate-[1.2] group-hover/card:brightness-[0.6] group-hover/card:scale-105 transition-all duration-700 pointer-events-none"
-            />
+            <EventMedia url={event.gifUrl} title={event.title} />
             {/* Ambient dynamic dark gradient to ensure the text remains extremely legible */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent mix-blend-multiply" />
           </div>

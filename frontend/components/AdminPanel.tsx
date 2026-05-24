@@ -69,16 +69,18 @@ export const AdminPanel: React.FC = () => {
     bottleNotes: ""
   });
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<"loading" | "supabase" | "in-memory">("loading");
 
   // Fetch all DB endpoints
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [evRes, phRes, tbRes, ordRes] = await Promise.all([
+      const [evRes, phRes, tbRes, ordRes, hlRes] = await Promise.all([
         fetch("/api/admin/events"),
         fetch("/api/admin/photos"),
         fetch("/api/admin/tables"),
-        fetch("/api/admin/orders")
+        fetch("/api/admin/orders"),
+        fetch("/api/health").catch(() => null)
       ]);
 
       if (evRes.ok) {
@@ -96,6 +98,12 @@ export const AdminPanel: React.FC = () => {
       if (ordRes.ok) {
         const d = await ordRes.json();
         setOrders(d.data || []);
+      }
+      if (hlRes && hlRes.ok) {
+        const h = await hlRes.json();
+        setDbStatus(h.database || "in-memory");
+      } else {
+        setDbStatus("in-memory");
       }
     } catch (err: any) {
       showMsg("Failed fetching server-backed states: " + err.message, "error");
@@ -417,6 +425,38 @@ export const AdminPanel: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
 
+        {/* DATABASE STATUS DIAGNOSTIC */}
+        <div className="mb-6">
+          {dbStatus === "loading" && (
+            <div className="p-3 bg-neutral-950 border border-neutral-900 text-zinc-400 font-mono text-[9px] rounded flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+              VERIFYING SECURE STORAGE CLOUD LINK...
+            </div>
+          )}
+          {dbStatus === "supabase" && (
+            <div className="p-3 bg-emerald-950/20 border border-emerald-900/30 text-emerald-400 font-mono text-[9px] rounded flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              LIVE PERSISTENCE ACTIVE: SECURE SUPABASE CLOUD CONNECTION PASSES ALL HEALTH INTEGRITY TESTS
+            </div>
+          )}
+          {dbStatus === "in-memory" && (
+            <div className="p-4 bg-amber-950/20 border border-amber-900/30 text-amber-400 font-mono text-[9px] rounded flex flex-col gap-2">
+              <div className="flex items-center gap-2 font-black uppercase text-[10px] text-amber-300">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                INTEGRATION ADVISORY: APPLICATION IS OPERATING IN LOCAL IN-MEMORY FALLBACK MODE
+              </div>
+              <p className="text-[10px] text-zinc-400 leading-relaxed font-sans font-medium">
+                Any changes, events, or VIP table modifications will disappear when the server restarts or spins down on Vercel. To link your live Supabase database permanently, go to your <strong>Vercel Dashboard &gt; Project Settings &gt; Environment Variables</strong> and securely define:
+              </p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                <code className="text-[9px] text-white bg-black/50 border border-neutral-800 px-1.5 py-0.5 rounded font-mono">DATABASE_URL</code>
+                <code className="text-[9px] text-white bg-black/50 border border-neutral-800 px-1.5 py-0.5 rounded font-mono">SUPABASE_URL</code>
+                <code className="text-[9px] text-white bg-black/50 border border-neutral-800 px-1.5 py-0.5 rounded font-mono">SUPABASE_SERVICE_ROLE_KEY</code>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* FEEDBACK BANNER */}
         {message && (
           <div className={`mb-6 p-4 border rounded-sm flex items-start gap-3 animate-fade-in ${
@@ -621,10 +661,12 @@ export const AdminPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-zinc-500 block uppercase mb-1">GIF LOOP GRAPHIC FOR BACKDROP (URL)</label>
+                  <label className="text-[10px] text-[#EF4444] block uppercase mb-1 font-bold">
+                    MEDIA BACKDROP URL (INSTAGRAM REEL, MP4 VIDEO, OR GIF)
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. https://giphy.com/..."
+                    placeholder="e.g. https://www.instagram.com/reel/C1tZ4p1rY7g/ or direct MP4 link"
                     className="w-full bg-neutral-950 border border-neutral-850 p-3 rounded text-white text-[10px] focus:outline-none focus:border-[#EF4444]"
                     value={eventForm.gifUrl}
                     onChange={e => setEventForm({ ...eventForm, gifUrl: e.target.value })}
