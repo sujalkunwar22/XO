@@ -59,16 +59,7 @@ export const VipSection: React.FC<VipSectionProps> = ({ onBookVIPPackage }) => {
               className="w-full h-auto filter contrast-[1.05] brightness-95 group-hover:scale-[1.01] transition-transform duration-500"
             />
 
-            {/* Floating Quick Action Overlay Button on Hover */}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
-              <button
-                onClick={() => onBookVIPPackage()}
-                className="px-6 py-3.5 bg-white text-black hover:bg-[#EF4444] hover:text-white font-mono text-xs font-black uppercase tracking-widest rounded transition-all cursor-pointer shadow-2xl flex items-center gap-2"
-              >
-                <ZoomIn size={14} />
-                OPEN TABLE BOOKING CONSOLE
-              </button>
-            </div>
+
           </div>
         </motion.div>
       </div>
