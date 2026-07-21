@@ -527,17 +527,8 @@ export const EventRow: React.FC<EventRowProps> = ({ onBookClick, events }) => {
   return (
     <div id="events-section" className="relative w-full py-20 scroll-mt-20 border-b border-neutral-900">
       <div className="max-w-7xl mx-auto px-6 mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <span className="font-mono text-[10px] text-zinc-400 tracking-[0.3em] font-bold block mb-2 uppercase">
-            // WORLD CLASS SPECTACLES
-          </span>
-          <h2 className="font-syne font-extrabold text-3xl sm:text-4xl md:text-5xl tracking-tight text-white uppercase leading-none">
-            XO CALENDAR EVENTS
-          </h2>
-        </div>
-
         {/* Dynamic Controls and Status */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ml-auto">
           <span className="font-mono text-[10px] text-zinc-500 uppercase flex items-center gap-2">
             SWIPE TICKETS
           </span>
