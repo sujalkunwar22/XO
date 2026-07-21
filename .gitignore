@@ -9,7 +9,7 @@ dist/
 dist.zip
 
 # Exclude private Google client secret json files
-*.json
+client_secret*.json
 
 # Logs
 *.log
