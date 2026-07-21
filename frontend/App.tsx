@@ -57,14 +57,26 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(false);
 
   // Lightweight native router path state
-  const [path, setPath] = useState(window.location.pathname);
+  const getRoutePath = () => {
+    const hash = window.location.hash;
+    if (hash.startsWith("#/")) {
+      return hash.substring(1); // returns e.g. "/admin"
+    }
+    return window.location.pathname;
+  };
+
+  const [path, setPath] = useState(getRoutePath());
 
   useEffect(() => {
-    const handlePopState = () => {
-      setPath(window.location.pathname);
+    const handleLocationChange = () => {
+      setPath(getRoutePath());
     };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.addEventListener("popstate", handleLocationChange);
+    window.addEventListener("hashchange", handleLocationChange);
+    return () => {
+      window.removeEventListener("popstate", handleLocationChange);
+      window.removeEventListener("hashchange", handleLocationChange);
+    };
   }, []);
 
   useEffect(() => {
